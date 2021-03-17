@@ -5,6 +5,10 @@ flake8-alfred
 flake8-eradicate
 flake8-fixme
 flake8-functions
+flake8-expression-complexity
+flake8-builtins
+flake8-return
+flake8-docstrings
 dlint
 typing_extensions
 mypy_extensions
@@ -14,3 +18,5 @@ safety
 piprot
 detect-secrets
 pylint
+coverage
+pytest
