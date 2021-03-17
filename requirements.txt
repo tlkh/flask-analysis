@@ -13,3 +13,4 @@ pyre-check
 safety
 piprot
 detect-secrets
+pylint
