@@ -1,0 +1,15 @@
+flake8
+flake8-bandit
+flake8-bugbear
+flake8-alfred
+flake8-eradicate
+flake8-fixme
+flake8-functions
+dlint
+typing_extensions
+mypy_extensions
+#python-taint
+pyre-check
+safety
+piprot
+detect-secrets

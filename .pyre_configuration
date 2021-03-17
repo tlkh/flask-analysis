@@ -1,0 +1,9 @@
+{
+  "source_directories": [
+    "./flask/src/"
+  ],
+  "search_path": [
+    "/home/timothy/miniconda3/"
+  ],
+  "taint_models_path": "/home/timothy/miniconda3/lib"
+}
