@@ -1,4 +1,6 @@
+import os
 import time
+import random
 import unittest
 import requests
 from seleniumwire import webdriver
@@ -61,7 +63,10 @@ class TestEscapeCSSInputs(unittest.TestCase):
     def test(self):
         self.driver.get("http://localhost:5000/inputs")
         search_box = self.driver.find_element_by_id("inputbox")
-        search_box.send_keys("<style>body{background-color:red}</style>")
+        search_box.send_keys("<style>#pagetitle{background-color:red !important}</style>")
+        pagetitle = self.driver.find_element_by_id("pagetitle")
+        bgcolor = pagetitle.value_of_css_property("background-color")
+        self.assertEqual(bgcolor, "rgba(255, 255, 255, 1)")
     def tearDown(self):
         self.driver.quit()
         
@@ -72,7 +77,36 @@ class TestEscapeJSInputs(unittest.TestCase):
     def setUp(self):
         self.driver = webdriver.Chrome(CHROMEDRIVER_PATH)
     def test(self):
-        pass
+        self.driver.get("http://localhost:5000/inputs")
+        search_box = self.driver.find_element_by_id("inputbox")
+        JAVASCRIPT = "<script>var pagetitle = document.getElementById('pagetitle');pagetitle.innerHTML+='pwned!';</script>"
+        search_box.send_keys(JAVASCRIPT)
+        pagetitle = self.driver.find_element_by_id("pagetitle").get_attribute("innerHTML")
+        if "pwned" in pagetitle:
+            unsafe_element_found = True
+        else:
+            unsafe_element_found = False
+        self.assertEqual(unsafe_element_found, False)
+    def tearDown(self):
+        self.driver.quit()
+        
+class TestRandomInputs(unittest.TestCase):
+    """
+    Check that random strings in inputs do not crash application
+    """
+    def setUp(self):
+        self.driver = webdriver.Chrome(CHROMEDRIVER_PATH)
+    def test(self, iterations=30):
+        self.driver.get("http://localhost:5000/inputs")
+        for i in range(iterations):
+            search_box = self.driver.find_element_by_id("inputbox")
+            length = random.randint(10, 100)
+            BYTESTRING = str(os.urandom(length))
+            search_box.send_keys(BYTESTRING)
+            search_box.submit()
+        self.driver.get("http://localhost:5000")
+        hw_text = self.driver.find_element_by_id("helloworld").get_attribute("innerHTML")
+        self.assertEqual(hw_text, "Hello, World!")
     def tearDown(self):
         self.driver.quit()
         
