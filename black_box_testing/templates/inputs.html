@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>Input testing</h2>
+
+<p><b>Form</b></p>
+
+<form method="POST" id="submitform">
+    <input name="text" id="inputbox">
+    <input type="submit">
+</form>
+
+<p><b>Output</b></p>
+
+<div id="displayout"> {{data}}</div>
+
+<p><b>Remarks</b></p>
+
+<p>Possible XSS or injection target. Flask is supposed to escape input data.</p>
+
+{% endblock %}

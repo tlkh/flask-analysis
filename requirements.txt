@@ -20,3 +20,8 @@ detect-secrets
 pylint
 coverage
 pytest
+selenium
+selenium-wire
+requests
+pyopenssl
+flask
