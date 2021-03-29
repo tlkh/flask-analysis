@@ -47,7 +47,7 @@ class AA_TestHTTPSServerRunning(unittest.TestCase):
 
 
 class Test404Page(unittest.TestCase):
-    """Check 404 page"""
+    """Check custom 404 page"""
 
     def setUp(self):
         self.driver = webdriver.Chrome(CHROMEDRIVER_PATH)
@@ -56,7 +56,7 @@ class Test404Page(unittest.TestCase):
         global BASE_URL
         self.driver.get(BASE_URL+"invalid_page")
         page_title = self.driver.title
-        self.assertEqual(page_title, "404 Not Found")
+        self.assertEqual(page_title, "Custom 404 Page")
 
     def tearDown(self):
         self.driver.quit()
