@@ -1,3 +1,6 @@
+from flask import render_template, request, make_response, redirect
+from flask import Flask
+import time
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--debug", action="store_true", default=False,
@@ -7,15 +10,24 @@ parser.add_argument("--ssl", action="store_true", default=False,
 parser.add_argument("--port", type=int, default=5000)
 args = parser.parse_args()
 
-import time
-from flask import Flask
-from flask import render_template, request, make_response
 
-app = Flask(__name__)
+app = Flask("Flask Web App")
+
+if args.ssl:
+    @app.before_request
+    def before_request():
+        """hook to redirect to HTTPS, does not seem to work on localhost"""
+        scheme = request.headers.get('X-Forwarded-Proto')
+        if scheme and scheme == 'http' and request.url.startswith('http://'):
+            url = request.url.replace('http://', 'https://', 1)
+            code = 301
+            return redirect(url, code=code)
+
 
 @app.route("/")
 def hello_world():
     return render_template("home.html")
+
 
 @app.route("/inputs", methods=["GET", "POST"])
 def inputs_page(data="No data"):
@@ -23,11 +35,13 @@ def inputs_page(data="No data"):
         data = request.form["text"]
     return render_template("inputs.html", data=data)
 
+
 @app.route("/inputs_unsafe", methods=["GET", "POST"])
 def inputs_page_unsafe(data="No data"):
     if request.method == "POST":
         data = request.form["text"]
     return render_template("inputs_unsafe.html", data=data)
+
 
 @app.route("/test_headers")
 def test_headers_page():
@@ -39,6 +53,7 @@ def test_headers_page():
     r.headers["X-XSS-Protection"] = "1; mode=block"
     r.headers["Server"] = "None"
     return r
+
 
 @app.route("/test_cookie_options")
 def test_cookies_page():
@@ -55,15 +70,17 @@ def test_cookies_page():
     r.set_cookie(cookie_name+"_persistent", "2", max_age=100)
     return r
 
+
 @app.route("/test_exception")
 def test_exception_page():
-    result = 1/0
+    _ = 1/0
     return "Exception"
+
 
 if __name__ == "__main__":
     print("Launching with adhoc SSL certificate:", args.ssl)
     if args.ssl:
-        app.run(host="127.0.0.1", port=args.port, debug=args.debug, ssl_context="adhoc")
+        app.run(host="127.0.0.1", port=args.port, debug=args.debug,
+                ssl_context=("cert.pem", "key.pem"))
     else:
         app.run(host="127.0.0.1", port=args.port, debug=args.debug)
-    
