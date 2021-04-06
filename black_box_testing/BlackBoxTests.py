@@ -1,12 +1,14 @@
 import os
 import time
 import random
+import string
 import unittest
 import requests
-from seleniumwire import webdriver
+from selenium import webdriver
+from selenium.common.exceptions import StaleElementReferenceException
 
-#CHROMEDRIVER_PATH = "./chromedriver_mac"
-CHROMEDRIVER_PATH = "./chromedriver_linux"
+CHROMEDRIVER_PATH = "./chromedriver_mac"
+# CHROMEDRIVER_PATH = "./chromedriver_linux"
 
 BASE_URL = "http://localhost:5000/"
 
@@ -19,8 +21,9 @@ class TestHTTPServerRunning(unittest.TestCase):
 
     def test(self):
         self.driver.get("http://localhost:5000/")
-        hw_text = self.driver.find_element_by_id(
-            "helloworld").get_attribute("innerHTML")
+        hw_text = self.driver.find_element_by_id("helloworld").get_attribute(
+            "innerHTML"
+        )
         self.assertEqual(hw_text, "Hello, World!")
 
     def tearDown(self):
@@ -36,8 +39,9 @@ class AA_TestHTTPSServerRunning(unittest.TestCase):
     def test(self):
         global BASE_URL
         self.driver.get("https://localhost:5000/")
-        hw_text = self.driver.find_element_by_id(
-            "helloworld").get_attribute("innerHTML")
+        hw_text = self.driver.find_element_by_id("helloworld").get_attribute(
+            "innerHTML"
+        )
         self.assertEqual(hw_text, "Hello, World!")
         BASE_URL = "https://localhost:5000/"
         print("Since HTTPS is working, we switch to that for testing")
@@ -54,7 +58,7 @@ class Test404Page(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"invalid_page")
+        self.driver.get(BASE_URL + "invalid_page")
         page_title = self.driver.title
         self.assertEqual(page_title, "Custom 404 Page")
 
@@ -70,15 +74,14 @@ class TestEscapeHTMLInputs(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"inputs")
+        self.driver.get(BASE_URL + "inputs")
         search_box = self.driver.find_element_by_id("inputbox")
         search_box.send_keys("<h1 id='unsafe_element'>Unsafe Element</h1>")
         search_box.submit()
-        display_out = self.driver.find_element_by_id(
-            "displayout").get_attribute("innerHTML")
         try:
-            unsafe_element = driver.find_element_by_id(
-                "unsafe_element").get_attribute("innerHTML")
+            unsafe_element = driver.find_element_by_id("unsafe_element").get_attribute(
+                "innerHTML"
+            )
             unsafe_element_found = True
         except:
             unsafe_element_found = False
@@ -96,10 +99,11 @@ class TestEscapeCSSInputs(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"inputs")
+        self.driver.get(BASE_URL + "inputs")
         search_box = self.driver.find_element_by_id("inputbox")
         search_box.send_keys(
-            "<style>#pagetitle{background-color:red !important}</style>")
+            "<style>#pagetitle{background-color:red !important}</style>"
+        )
         pagetitle = self.driver.find_element_by_id("pagetitle")
         bgcolor = pagetitle.value_of_css_property("background-color")
         self.assertEqual(bgcolor, "rgba(255, 255, 255, 1)")
@@ -116,17 +120,41 @@ class TestEscapeJSInputs(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"inputs")
+        self.driver.get(BASE_URL + "inputs")
         search_box = self.driver.find_element_by_id("inputbox")
         JAVASCRIPT = "<script>var pagetitle = document.getElementById('pagetitle');pagetitle.innerHTML+='pwned!';</script>"
         search_box.send_keys(JAVASCRIPT)
-        pagetitle = self.driver.find_element_by_id(
-            "pagetitle").get_attribute("innerHTML")
+        pagetitle = self.driver.find_element_by_id("pagetitle").get_attribute(
+            "innerHTML"
+        )
         if "pwned" in pagetitle:
             unsafe_element_found = True
         else:
             unsafe_element_found = False
         self.assertEqual(unsafe_element_found, False)
+
+    def tearDown(self):
+        self.driver.quit()
+
+
+class TestSQLInjection(unittest.TestCase):
+    """Check that SQL injection is detected"""
+
+    def setUp(self):
+        self.driver = webdriver.Chrome(CHROMEDRIVER_PATH)
+
+    def test(self):
+        global BASE_URL
+        self.driver.get(BASE_URL + "inputs")
+        search_box = self.driver.find_element_by_id("inputbox")
+        search_box.send_keys("SELECT COUNT(*) FROM users;")
+        search_box.submit()
+        alert_out = self.driver.find_element_by_id("alert").get_attribute("innerHTML")
+        if "Possible SQL injection detected" in alert_out:
+            detected = True
+        else:
+            detected = False
+        self.assertEqual(detected, True)
 
     def tearDown(self):
         self.driver.quit()
@@ -138,18 +166,30 @@ class TestRandomInputs(unittest.TestCase):
     def setUp(self):
         self.driver = webdriver.Chrome(CHROMEDRIVER_PATH)
 
+    def _generate_random_string(self, length):
+        x = "".join(random.choices(string.printable, k=length))
+        return x
+
     def test(self, iterations=30):
         global BASE_URL
-        self.driver.get(BASE_URL+"inputs")
         for i in range(iterations):
+            self.driver.get(BASE_URL + "inputs")
             search_box = self.driver.find_element_by_id("inputbox")
-            length = random.randint(10, 100)
-            BYTESTRING = str(os.urandom(length))
-            search_box.send_keys(BYTESTRING)
-            search_box.submit()
+            length = random.randint(10, 1000)
+            random_string = self._generate_random_string(length)
+            search_box.send_keys(random_string)
+            try:
+                search_box.submit()
+            except StaleElementReferenceException as e:
+                print(e)
+            text = self.driver.find_element_by_id("displayout").get_attribute(
+                "innerHTML"
+            )
+            print(text)
         self.driver.get(BASE_URL)
-        hw_text = self.driver.find_element_by_id(
-            "helloworld").get_attribute("innerHTML")
+        hw_text = self.driver.find_element_by_id("helloworld").get_attribute(
+            "innerHTML"
+        )
         self.assertEqual(hw_text, "Hello, World!")
 
     def tearDown(self):
@@ -164,13 +204,14 @@ class TestSecurityHeaders(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        res_headers = requests.get(
-            BASE_URL+"test_headers", verify='cert.pem').headers
-        correct_headers = {'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-                           'Content-Security-Policy': "default-src 'self'",
-                           'X-Content-Type-Options': 'nosniff',
-                           'X-Frame-Options': 'SAMEORIGIN',
-                           'X-XSS-Protection': '1; mode=block'}
+        res_headers = requests.get(BASE_URL + "test_headers", verify="cert.pem").headers
+        correct_headers = {
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+            "Content-Security-Policy": "default-src 'self'",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "SAMEORIGIN",
+            "X-XSS-Protection": "1; mode=block",
+        }
         for k in list(correct_headers.keys()):
             self.assertEqual(res_headers[k], correct_headers[k])
 
@@ -186,8 +227,7 @@ class TestServerFingerprint(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        res_headers = requests.get(
-            BASE_URL+"test_headers", verify='cert.pem').headers
+        res_headers = requests.get(BASE_URL + "test_headers", verify="cert.pem").headers
         self.assertEqual(res_headers["Server"], "None")
 
     def tearDown(self):
@@ -203,16 +243,16 @@ class TestCookieLifetime(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"test_cookie_options")
+        self.driver.get(BASE_URL + "test_cookie_options")
         initial_cookies = self.driver.get_cookies()
         assert len(initial_cookies) > 0
         time.sleep(2)
-        self.driver.get(BASE_URL+"test_cookie_options")
+        self.driver.get(BASE_URL + "test_cookie_options")
         second_cookies = self.driver.get_cookies()
         # we should have more cookies
         self.assertGreater(len(second_cookies), len(initial_cookies))
         # but some cookies from initial visit should expire
-        self.assertLess(len(second_cookies), len(initial_cookies)*2)
+        self.assertLess(len(second_cookies), len(initial_cookies) * 2)
 
     def tearDown(self):
         self.driver.quit()
@@ -226,7 +266,7 @@ class TestDebuggerVisibility(unittest.TestCase):
 
     def test(self):
         global BASE_URL
-        self.driver.get(BASE_URL+"test_exception")
+        self.driver.get(BASE_URL + "test_exception")
         try:
             traceback = self.driver.find_elements_by_class_name("debugger")
             if len(traceback) > 0:
